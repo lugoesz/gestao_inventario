@@ -1,7 +1,5 @@
-# inventario_seguro.py
 # Sistema de Gestão de Inventário com segurança (SHA-256 para login + Cifra de César para arquivo CSV)
-# Funciona via terminal. Arquivos: login.txt (hashes) e inventario.csv (dados cifrados, ; separador)
-# Persistência apenas ao sair (processamento em lote).
+# Arquivos: login.txt (hashes) e inventario.csv (dados cifrados, ; separador)
 
 import hashlib
 
@@ -10,16 +8,11 @@ INVENTARIO_FILE = 'inventario.csv'
 DELIM = ';'
 CAESAR_SHIFT = 3  # ajuste simples para a cifra de César
 
-# ---------------------------
 # Utilitários: hashing e cifra
-# ---------------------------
-def sha256_hex(s):
-    """Retorna o hash SHA-256 em hexdigest de uma string."""
+def sha256_hex(s): #Retorna o hash SHA-256 em hexdigest de uma string.
     return hashlib.sha256(s.encode()).hexdigest()
 
-def caesar_encrypt_text(text, shift=CAESAR_SHIFT):
-    """Cifra um texto com Cifra de César simples. Opera sobre caracteres imprimíveis.
-       Preserva o separador (;) caso apareça — mas não devemos ter ; nos campos."""
+def caesar_encrypt_text(text, shift=CAESAR_SHIFT): #Cifra um texto com Cifra de César simples. Opera sobre caracteres imprimíveis. Preserva o separador (;) caso apareça — mas não devemos ter ; nos campos.
     res = []
     for ch in text:
         # cifrar apenas caracteres ASCII entre 32 e 126 para ficar simples
@@ -36,11 +29,8 @@ def caesar_encrypt_text(text, shift=CAESAR_SHIFT):
 def caesar_decrypt_text(text, shift=CAESAR_SHIFT):
     return caesar_encrypt_text(text, -shift)
 
-# ---------------------------
 # Manipulação de arquivos
-# ---------------------------
-def ler_login():
-    """Lê login.txt. Retorna tuple (user_hash, pass_hash) ou (None, None) se vazio/ausente."""
+def ler_login(): #Lê login.txt. Retorna tuple (user_hash, pass_hash) ou (None, None) se vazio/ausente.
     try:
         with open(LOGIN_FILE, 'r') as f:
             linha = f.readline().strip()
@@ -58,10 +48,7 @@ def grava_login(user_hash, pass_hash):
     with open(LOGIN_FILE, 'w') as f:
         f.write(f'{user_hash}{DELIM}{pass_hash}\n')
 
-def carregar_inventario():
-    """Lê inventario.csv (cifrado), decifra campos e retorna dicionário:
-       { id_int: [nome_str, quantidade_int, preco_float, importado_bool] }
-    """
+def carregar_inventario(): #Lê inventario.csv (cifrado), decifra campos e retorna dicionário:  { id_int: [nome_str, quantidade_int, preco_float, importado_bool] }
     inventario = {}
     try:
         with open(INVENTARIO_FILE, 'r') as f:
@@ -88,8 +75,7 @@ def carregar_inventario():
         pass
     return inventario
 
-def salvar_inventario(inventario):
-    """Recebe dicionário e grava inventario.csv (cifrando cada campo)."""
+def salvar_inventario(inventario): #Recebe dicionário e grava inventario.csv (cifrando cada campo).
     with open(INVENTARIO_FILE, 'w') as f:
         for id_int, campos in inventario.items():
             nome, qtd, preco, importado = campos
@@ -98,9 +84,7 @@ def salvar_inventario(inventario):
             linha_cifrada = caesar_encrypt_text(linha)
             f.write(linha_cifrada + '\n')
 
-# ---------------------------
 # Validações
-# ---------------------------
 def validar_id_unico(inventario, id_val):
     if id_val in inventario:
         return False
@@ -116,7 +100,7 @@ def validar_float(valor):
     try:
         return float(valor)
     except Exception:
-        raise ValueError('Valor numérico (float) esperado.')
+        raise ValueError('Valor numérico esperado.')
 
 def validar_bool_sim_nao(valor):
     v = valor.strip().lower()
@@ -126,9 +110,7 @@ def validar_bool_sim_nao(valor):
         return False
     raise ValueError('Valor booleano inválido (use sim/não).')
 
-# ---------------------------
 # Algoritmos de ordenação
-# ---------------------------
 def insertion_sort_list_by_name(L):
     # L é lista de tuplas (id, nome, qtd, preco, importado) ou [ [id, nome, ...], ... ]
     n = len(L)
@@ -174,10 +156,8 @@ def merge_sort_list_by_name(L, i, f):
     merge_sort_list_by_name(L, m+1, f)
     merge_intercala(L, i, m, f)
 
-def ordenar_lista_por_nome(L):
-    """Escolhe algoritmo automaticamente: insertion/selection para <=100, merge para >100.
-       L é lista de estruturas onde o campo [1] é o nome.
-    """
+def ordenar_lista_por_nome(L): #Escolhe algoritmo automaticamente: insertion/selection para <=100, merge para >100. 
+                               #L é lista de estruturas onde o campo [1] é o nome.
     n = len(L)
     if n <= 100:
         # uso insertion sort (poderia ser selection)
@@ -185,9 +165,7 @@ def ordenar_lista_por_nome(L):
     else:
         merge_sort_list_by_name(L, 0, n-1)
 
-# ---------------------------
 # Buscas
-# ---------------------------
 def busca_linear_por_nome(inventario, nome_busca):
     """Retorna lista de (id, [campos]) cujo nome contém nome_busca (case-insensitivo)."""
     resp = []
@@ -202,10 +180,8 @@ def busca_por_id(inventario, id_busca):
     return inventario.get(id_busca)
 
 def busca_binaria_por_nome_em_lista(L, nome_busca):
-    """L deve estar ordenada por nome (cada item: (id, nome, qtd, preco, importado) ou [id,nome,...]).
-       Retorna (index, item) se encontrado (primeiro com nome exato), senão (-1, None).
-       Aqui fazemos busca por igualdade do nome completo.
-    """
+    #L deve estar ordenada por nome (cada item: (id, nome, qtd, preco, importado) ou [id,nome,...]).
+    # Retorna (index, item) se encontrado (primeiro com nome exato), senão (-1, None).
     low = 0
     high = len(L) - 1
     chave = nome_busca.lower()
@@ -220,9 +196,7 @@ def busca_binaria_por_nome_em_lista(L, nome_busca):
             high = mid - 1
     return -1, None
 
-# ---------------------------
 # Operações sobre o dicionário
-# ---------------------------
 def adicionar_produto(inventario):
     try:
         id_str = input('ID (inteiro único): ').strip()
@@ -337,9 +311,7 @@ def estatisticas(inventario):
     print(f'Valor total do estoque: R$ {valor_total:.2f}')
     print(f'Quantidade de produtos importados: {total_importados}')
 
-# ---------------------------
 # Login / Autenticação
-# ---------------------------
 def criar_login_inicial():
     print('Arquivo de login vazio. Crie usuário e senha iniciais.')
     user = input('Novo usuário: ').strip()
@@ -347,7 +319,7 @@ def criar_login_inicial():
     user_hash = sha256_hex(user)
     pass_hash = sha256_hex(senha)
     grava_login(user_hash, pass_hash)
-    print('Usuário e senha gravados (hash). Continue para login.')
+    print('Usuário e senha gravados. Continue para login.')
 
 def autenticar():
     user_hash_stored, pass_hash_stored = ler_login()
@@ -371,9 +343,7 @@ def editar_login():
     grava_login(sha256_hex(user), sha256_hex(senha))
     print('Login atualizado.')
 
-# ---------------------------
 # Menu principal
-# ---------------------------
 def menu_principal():
     inventario = carregar_inventario()
     print(f'Inventário carregado. {len(inventario)} produto(s) na memória.')
@@ -382,7 +352,7 @@ def menu_principal():
         print('1 - Adicionar produto')
         print('2 - Remover produto')
         print('3 - Atualizar produto')
-        print('4 - Exibir todos os produtos (ordenados por nome)')
+        print('4 - Exibir todos os produtos')
         print('5 - Buscar produto (por ID ou nome)')
         print('6 - Estatísticas do inventário')
         print('7 - Editar usuário/senha')
@@ -405,18 +375,17 @@ def menu_principal():
         elif op == '0':
             # salvar e sair
             salvar_inventario(inventario)
-            print('Inventário salvo (cifrado). Saindo.')
+            print('Inventário salvo. Saindo...')
             break
         else:
             print('Opção inválida.')
 
-# ---------------------------
 # Entrypoint
-# ---------------------------
 def main():
     print('=== Sistema de Gestão de Inventário (terminal) ===')
     autenticar()
     menu_principal()
 
 if __name__ == '__main__':
+
     main()
