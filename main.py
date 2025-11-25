@@ -2,32 +2,48 @@
 # Arquivos: login.txt (hashes) e inventario.csv (dados cifrados, ; separador)
 
 import hashlib
+import os
+from cryptography.fernet import Fernet
 
 LOGIN_FILE = 'login.txt'
 INVENTARIO_FILE = 'inventario.csv'
 DELIM = ';'
-CAESAR_SHIFT = 3  # ajuste simples para a cifra de César
+FERNET_KEY_FILE = 'fernet.key'
 
 # Utilitários: hashing e cifra
 def sha256_hex(s): #Retorna o hash SHA-256 em hexdigest de uma string.
     return hashlib.sha256(s.encode()).hexdigest()
 
-def caesar_encrypt_text(text, shift=CAESAR_SHIFT): #Cifra um texto com Cifra de César simples. Opera sobre caracteres imprimíveis. Preserva o separador (;) caso apareça — mas não devemos ter ; nos campos.
-    res = []
-    for ch in text:
-        # cifrar apenas caracteres ASCII entre 32 e 126 para ficar simples
-        code = ord(ch)
-        if 32 <= code <= 126:
-            base = 32
-            width = 95  # 126 - 32 + 1
-            new = ((code - base + shift) % width) + base
-            res.append(chr(new))
-        else:
-            res.append(ch)
-    return ''.join(res)
+def ensure_fernet_key() -> bytes:
+    """Gera uma chave Fernet e grava em FERNET_KEY_FILE se não existir, retorna a chave em bytes."""
+    if os.path.exists(FERNET_KEY_FILE):
+        with open(FERNET_KEY_FILE, 'rb') as kf:
+            return kf.read()
+    key = Fernet.generate_key()
+    with open(FERNET_KEY_FILE, 'wb') as kf:
+        kf.write(key)
+    # arquivo gerado com a chave — guarde com cuidado
+    return key
 
-def caesar_decrypt_text(text, shift=CAESAR_SHIFT):
-    return caesar_encrypt_text(text, -shift)
+def get_fernet() -> Fernet:
+    key = ensure_fernet_key()
+    return Fernet(key)
+
+def encrypt_field(field: str) -> str:
+    """Encripta um campo (string) e retorna token (str)."""
+    f = get_fernet()
+    token = f.encrypt(field.encode('utf-8'))
+    return token.decode('utf-8')
+
+def decrypt_field(token_str: str) -> str:
+    """Decifra token (str) e retorna o texto original."""
+    f = get_fernet()
+    try:
+        plain = f.decrypt(token_str.encode('utf-8'))
+        return plain.decode('utf-8')
+    except Exception:
+        # se não decifrar, retorna string vazia para forçar ignorar/validar posteriormente
+        return ''
 
 # Manipulação de arquivos
 def ler_login(): #Lê login.txt. Retorna tuple (user_hash, pass_hash) ou (None, None) se vazio/ausente.
@@ -48,7 +64,7 @@ def grava_login(user_hash, pass_hash):
     with open(LOGIN_FILE, 'w') as f:
         f.write(f'{user_hash}{DELIM}{pass_hash}\n')
 
-def carregar_inventario(): #Lê inventario.csv (cifrado), decifra campos e retorna dicionário:  { id_int: [nome_str, quantidade_int, preco_float, importado_bool] }
+def carregar_inventario(): #Lê inventario.csv (cifrado por campo), decifra campos e retorna dicionário
     inventario = {}
     try:
         with open(INVENTARIO_FILE, 'r') as f:
@@ -57,8 +73,8 @@ def carregar_inventario(): #Lê inventario.csv (cifrado), decifra campos e retor
                 if not linha:
                     continue
                 campos_cifrados = linha.split(DELIM)
-                # decifrar cada campo
-                campos = [caesar_decrypt_text(c) for c in campos_cifrados]
+                # decifrar cada campo usando Fernet
+                campos = [decrypt_field(c) for c in campos_cifrados]
                 # campo esperado: id;nome;quantidade;preco;importado
                 try:
                     id_str, nome, qtd_str, preco_str, imp_str = campos
@@ -75,13 +91,15 @@ def carregar_inventario(): #Lê inventario.csv (cifrado), decifra campos e retor
         pass
     return inventario
 
-def salvar_inventario(inventario): #Recebe dicionário e grava inventario.csv (cifrando cada campo).
+def salvar_inventario(inventario): #Recebe dicionário e grava inventario.csv (cifrando cada campo com Fernet).
     with open(INVENTARIO_FILE, 'w') as f:
         for id_int, campos in inventario.items():
             nome, qtd, preco, importado = campos
             imp_str = 'True' if importado else 'False'
-            linha = DELIM.join([str(id_int), nome, str(qtd), f'{preco:.2f}', imp_str])
-            linha_cifrada = caesar_encrypt_text(linha)
+            # cifrar cada campo individualmente para manter separadores
+            campos_texto = [str(id_int), nome, str(qtd), f'{preco:.2f}', imp_str]
+            campos_cifrados = [encrypt_field(c) for c in campos_texto]
+            linha_cifrada = DELIM.join(campos_cifrados)
             f.write(linha_cifrada + '\n')
 
 # Validações
@@ -181,18 +199,18 @@ def busca_id(inventario, id_busca):
 def busca_binaria_por_nome_em_lista(L, nome_busca):
     #L deve estar ordenada por nome (cada item: (id, nome, qtd, preco, importado) ou [id,nome,...]).
     # Retorna (index, item) se encontrado (primeiro com nome exato), senão (-1, None).
-    low = 0
-    high = len(L) - 1
+    menor = 0
+    maior = len(L) - 1
     chave = nome_busca.lower()
-    while low <= high:
-        mid = (low + high) // 2
-        mid_name = L[mid][1].lower()
+    while menor <= maior:
+        meio = (menor + maior) // 2
+        mid_name = L[meio][1].lower()
         if mid_name == chave:
-            return mid, L[mid]
+            return meio, L[meio]
         elif mid_name < chave:
-            low = mid + 1
+            menor = meio + 1
         else:
-            high = mid - 1
+            maior = meio - 1
     return -1, None
 
 # Operações sobre o dicionário
@@ -283,16 +301,35 @@ def buscar_produto(inventario):
         except ValueError:
             print('ID inválido.')
     elif modo == '2':
-        nome_busca = input('Nome (busca por substring): ').strip()
-        # busca linear
-        resultados = busca_linear_por_nome(inventario, nome_busca)
-        if resultados:
-            print(f'Encontrados {len(resultados)} resultado(s):')
-            for id_int, campos in resultados:
-                nome, qtd, preco, imp = campos
-                print(f'ID {id_int} -> {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}')
+        sub = input('Buscar por (1) substring (linear) ou (2) nome exato (binária)? ').strip()
+        if sub == '1':
+            nome_busca = input('Nome (busca por substring): ').strip()
+            resultados = busca_linear_por_nome(inventario, nome_busca)
+            if resultados:
+                print(f'Encontrados {len(resultados)} resultado(s):')
+                for id_int, campos in resultados:
+                    nome, qtd, preco, imp = campos
+                    print(f'ID {id_int} -> {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}')
+            else:
+                print('Nenhum produto encontrado.')
+        elif sub == '2':
+            nome_exato = input('Nome (exato): ').strip()
+            # preparar lista ordenada e usar busca binária
+            L = []
+            for id_int, campos in inventario.items():
+                L.append([id_int, campos[0], campos[1], campos[2], campos[3]])
+            if not L:
+                print('Inventário vazio.')
+                return
+            ordenar_lista_por_nome(L)
+            idx, item = busca_binaria_por_nome_em_lista(L, nome_exato)
+            if idx != -1:
+                id_int, nome, qtd, preco, imp = item
+                print(f'Encontrado: ID {id_int} -> {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}')
+            else:
+                print('Produto não encontrado (busca binária).')
         else:
-            print('Nenhum produto encontrado.')
+            print('Opção inválida.')
     else:
         print('Opção inválida.')
 
@@ -385,6 +422,7 @@ def main():
     menu_principal()
 
 main()
+
 
 
 
