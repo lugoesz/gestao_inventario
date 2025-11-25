@@ -176,7 +176,7 @@ def busca_linear_por_nome(inventario, nome_busca):
             resp.append((id_int, campos))
     return resp
 
-def busca_por_id(inventario, id_busca):
+def busca_id(inventario, id_busca):
     return inventario.get(id_busca)
 
 def busca_binaria_por_nome_em_lista(L, nome_busca):
@@ -275,7 +275,7 @@ def buscar_produto(inventario):
     if modo == '1':
         try:
             id_int = validar_int(input('ID: ').strip())
-            item = busca_por_id(inventario, id_int)
+            item = busca_id(inventario, id_int)
             if item:
                 nome, qtd, preco, imp = item
                 print(f'ID {id_int} -> {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}')
@@ -386,6 +386,5 @@ def main():
     autenticar()
     menu_principal()
 
-if __name__ == '__main__':
+main()
 
-    main()
