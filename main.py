@@ -166,8 +166,7 @@ def ordenar_lista_por_nome(L): #Escolhe algoritmo automaticamente: insertion/sel
         merge_sort_list_by_name(L, 0, n-1)
 
 # Buscas
-def busca_linear_por_nome(inventario, nome_busca):
-    """Retorna lista de (id, [campos]) cujo nome contém nome_busca (case-insensitivo)."""
+def busca_linear_por_nome(inventario, nome_busca): #Retorna lista de (id, [campos]) cujo nome contém nome_busca (case-insensitivo)
     resp = []
     chave = nome_busca.lower()
     for id_int, campos in inventario.items():
@@ -387,4 +386,5 @@ def main():
     menu_principal()
 
 main()
+
 
