@@ -85,7 +85,7 @@ def salvar_inventario(inventario): #Recebe dicionário e grava inventario.csv (c
             f.write(linha_cifrada + '\n')
 
 # Validações
-def validar_id_unico(inventario, id_val):
+def validar_id(inventario, id_val):
     if id_val in inventario:
         return False
     return True
@@ -102,7 +102,7 @@ def validar_float(valor):
     except Exception:
         raise ValueError('Valor numérico esperado.')
 
-def validar_bool_sim_nao(valor):
+def validar_bool(valor):
     v = valor.strip().lower()
     if v in ('sim','s','true','1','yes','y'):
         return True
@@ -200,13 +200,13 @@ def adicionar_produto(inventario):
     try:
         id_str = input('ID (inteiro único): ').strip()
         id_int = validar_int(id_str)
-        if not validar_id_unico(inventario, id_int):
+        if not validar_id(inventario, id_int):
             print('ID já existe.')
             return
         nome = input('Nome: ').strip()
         qtd = validar_int(input('Quantidade (inteiro): ').strip())
         preco = validar_float(input('Preço (ex: 12.50): ').strip())
-        imp = validar_bool_sim_nao(input('Importado? (sim/não): ').strip())
+        imp = validar_bool(input('Importado? (sim/não): ').strip())
         inventario[id_int] = [nome, qtd, preco, imp]
         print('Produto adicionado na memória (será salvo ao encerrar).')
     except ValueError as e:
@@ -242,7 +242,7 @@ def atualizar_produto(inventario):
             preco = validar_float(entrada)
         entrada = input(f'Importado? (sim/não) [{ "sim" if imp else "não" }]: ').strip()
         if entrada != '':
-            imp = validar_bool_sim_nao(entrada)
+            imp = validar_bool(entrada)
         inventario[id_int] = [nome, qtd, preco, imp]
         print('Produto atualizado (na memória).')
     except ValueError as e:
@@ -340,9 +340,9 @@ def editar_login():
     user = input('Novo usuário: ').strip()
     senha = input('Nova senha: ').strip()
     grava_login(sha256_hex(user), sha256_hex(senha))
-    print('Login atualizado.')
+    print('Login atualizado!')
 
-# Menu principal
+# menu principal
 def menu_principal():
     inventario = carregar_inventario()
     print(f'Inventário carregado. {len(inventario)} produto(s) na memória.')
@@ -356,7 +356,7 @@ def menu_principal():
         print('6 - Estatísticas do inventário')
         print('7 - Editar usuário/senha')
         print('0 - Salvar e encerrar')
-        op = input('Escolha: ').strip()
+        op = input('Escolha como prosseguir: ').strip()
         if op == '1':
             adicionar_produto(inventario)
         elif op == '2':
@@ -374,17 +374,17 @@ def menu_principal():
         elif op == '0':
             # salvar e sair
             salvar_inventario(inventario)
-            print('Inventário salvo. Saindo...')
+            print('Inventário salvo! Saindo...')
             break
         else:
             print('Opção inválida.')
 
-# Entrypoint
 def main():
-    print('=== Sistema de Gestão de Inventário (terminal) ===')
+    print('--- Sistema de Gestão de Inventário ---')
     autenticar()
     menu_principal()
 
 main()
+
 
 
