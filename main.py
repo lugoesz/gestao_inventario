@@ -10,44 +10,52 @@
 
 import hashlib
 import os
-from cryptography.fernet import Fernet
 
 LOGIN_FILE = 'login.txt'
 INVENTARIO_FILE = 'inventario.csv'
 DELIM = ';'
-FERNET_KEY_FILE = 'fernet.key'
+CAESAR_SHIFT = 5  # Chave da Cifra de César
 
 # Utilitários: hashing e cifra
 def sha256_hex(s): #Retorna o hash SHA-256 em hexdigest de uma string.
     return hashlib.sha256(s.encode()).hexdigest()
 
-def ensure_fernet_key() -> bytes:
-    """Gera uma chave Fernet e grava em FERNET_KEY_FILE se não existir, retorna a chave em bytes."""
-    if os.path.exists(FERNET_KEY_FILE):
-        with open(FERNET_KEY_FILE, 'rb') as kf:
-            return kf.read()
-    key = Fernet.generate_key()
-    with open(FERNET_KEY_FILE, 'wb') as kf:
-        kf.write(key)
-    # arquivo gerado com a chave — guarde com cuidado
-    return key
-
-def get_fernet() -> Fernet:
-    key = ensure_fernet_key()
-    return Fernet(key)
-
 def encrypt_field(field: str) -> str:
-    """Encripta um campo (string) e retorna token (str)."""
-    f = get_fernet()
-    token = f.encrypt(field.encode('utf-8'))
-    return token.decode('utf-8')
+    """Encripta um campo (string) com Cifra de César e retorna token (str)."""
+    resultado = []
+    for char in field:
+        if char.isalpha():
+            # Determina se é maiúscula ou minúscula
+            if char.isupper():
+                # Cifra maiúsculas
+                novo_char = chr((ord(char) - ord('A') + CAESAR_SHIFT) % 26 + ord('A'))
+            else:
+                # Cifra minúsculas
+                novo_char = chr((ord(char) - ord('a') + CAESAR_SHIFT) % 26 + ord('a'))
+            resultado.append(novo_char)
+        else:
+            # Mantém números, espaços e caracteres especiais
+            resultado.append(char)
+    return ''.join(resultado)
 
 def decrypt_field(token_str: str) -> str:
-    """Decifra token (str) e retorna o texto original."""
-    f = get_fernet()
+    """Decifra token (str) com Cifra de César inversa e retorna o texto original."""
     try:
-        plain = f.decrypt(token_str.encode('utf-8'))
-        return plain.decode('utf-8')
+        resultado = []
+        for char in token_str:
+            if char.isalpha():
+                # Determina se é maiúscula ou minúscula
+                if char.isupper():
+                    # Decifra maiúsculas
+                    novo_char = chr((ord(char) - ord('A') - CAESAR_SHIFT) % 26 + ord('A'))
+                else:
+                    # Decifra minúsculas
+                    novo_char = chr((ord(char) - ord('a') - CAESAR_SHIFT) % 26 + ord('a'))
+                resultado.append(novo_char)
+            else:
+                # Mantém números, espaços e caracteres especiais
+                resultado.append(char)
+        return ''.join(resultado)
     except Exception:
         # se não decifrar, retorna string vazia para forçar ignorar/validar posteriormente
         return ''
@@ -429,8 +437,4 @@ def main():
     menu_principal()
 
 main()
-
-
-
-
 
