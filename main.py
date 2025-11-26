@@ -211,7 +211,7 @@ def busca_linear_por_nome(inventario, nome_busca): #Retorna lista de (id, [campo
 def busca_id(inventario, id_busca):
     return inventario.get(id_busca)
 
-def busca_binaria_por_nome_em_lista(L, nome_busca):
+def bb_nome(L, nome_busca):
     #L deve estar ordenada por nome (cada item: (id, nome, qtd, preco, importado) ou [id,nome,...]).
     # Retorna (index, item) se encontrado (primeiro com nome exato), senão (-1, None).
     menor = 0
@@ -303,50 +303,58 @@ def exibir_todos_produtos(inventario):
     print('-' * len(cab))
 
 def buscar_produto(inventario):
-    modo = input('Buscar por (1) ID ou (2) Nome? ').strip()
-    if modo == '1':
-        try:
-            id_int = validar_int(input('ID: ').strip())
-            item = busca_id(inventario, id_int)
-            if item:
-                nome, qtd, preco, imp = item
-                print(f'ID {id_int} -> {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}')
-            else:
-                print('ID não encontrado.')
-        except ValueError:
-            print('ID inválido.')
-    elif modo == '2':
-        sub = input('Buscar por (1) substring (linear) ou (2) nome exato (binária)? ').strip()
-        if sub == '1':
-            nome_busca = input('Nome (busca por substring): ').strip()
-            resultados = busca_linear_por_nome(inventario, nome_busca)
-            if resultados:
-                print(f'Encontrados {len(resultados)} resultado(s):')
-                for id_int, campos in resultados:
-                    nome, qtd, preco, imp = campos
-                    print(f'ID {id_int} -> {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}')
-            else:
-                print('Nenhum produto encontrado.')
-        elif sub == '2':
-            nome_exato = input('Nome (exato): ').strip()
-            # preparar lista ordenada e usar busca binária
-            L = []
-            for id_int, campos in inventario.items():
-                L.append([id_int, campos[0], campos[1], campos[2], campos[3]])
-            if not L:
-                print('Inventário vazio.')
-                return
-            ordenar_lista_por_nome(L)
-            idx, item = busca_binaria_por_nome_em_lista(L, nome_exato)
-            if idx != -1:
-                id_int, nome, qtd, preco, imp = item
-                print(f'Encontrado: ID {id_int} -> {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}')
-            else:
-                print('Produto não encontrado (busca binária).')
+    termo = input("Digite o ID ou o nome do produto: ").strip()
+
+    if not inventario:
+        print("Inventário vazio.")
+        return
+
+    #ID
+    try:
+        id_val = int(termo)   # se funcionar, é ID
+        item = busca_id(inventario, id_val)
+
+        if item:
+            nome, qtd, preco, imp = item
+            print("(Busca por ID)")
+            print(f"ID {id_val} | {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}")
         else:
-            print('Opção inválida.')
-    else:
-        print('Opção inválida.')
+            print("ID não encontrado.")
+        return 
+
+    except:
+        # Se cair aqui, NÃO é ID → trata como nome e vai para a BUSCA POR NOME
+        pass
+
+    # BUSCA POR NOME
+    # Criar lista L no formato usado por todo o sistema
+    L = []
+    for id_int, campos in inventario.items():
+        L.append([id_int, campos[0], campos[1], campos[2], campos[3]])
+
+    # Ordenar por nome (necessário para busca binária)
+    ordenar_lista_por_nome(L)
+
+    # 1) Tentar busca binária (nome exato)
+    idx, item = bb_nome(L, termo)
+    if idx != -1:
+        id_int, nome, qtd, preco, imp = item
+        print("(Busca binária — nome exato)")
+        print(f"ID {id_int} | {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}")
+        return
+
+    # 2) Se não achar nome exato → busca linear (substring)
+    print("(Busca linear — substring)")
+    encontrou = False
+
+    for item in L:
+        id_int, nome, qtd, preco, imp = item
+        if termo.lower() in nome.lower():
+            encontrou = True
+            print(f"ID {id_int} | {nome} | Qtd: {qtd} | Preço: R$ {preco:.2f} | Importado: {imp}")
+
+    if not encontrou:
+        print("Nenhum produto encontrado.")
 
 def estatisticas(inventario):
     num = len(inventario)
@@ -437,4 +445,3 @@ def main():
     menu_principal()
 
 main()
-
