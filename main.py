@@ -1,4 +1,11 @@
-# Sistema de Gestão de Inventário com segurança (SHA-256 para login + Cifra de César para arquivo CSV)
+# Sistema de Gestão de Inventário com Segurança da Informação em Python
+# Alunos:
+# Giovanna Araujo Almeida - RA: 1680972511025
+# Luiza Goes - RA:1680972511008
+# Nelson S M Lisboa - RA:1680972511019
+# Roan Silva dos Anjos- RA:1680972511018
+# Gabriel 
+
 # Arquivos: login.txt (hashes) e inventario.csv (dados cifrados, ; separador)
 
 import hashlib
@@ -46,7 +53,7 @@ def decrypt_field(token_str: str) -> str:
         return ''
 
 # Manipulação de arquivos
-def ler_login(): #Lê login.txt. Retorna tuple (user_hash, pass_hash) ou (None, None) se vazio/ausente.
+def ler_login(): #Lê login.txt. Retorna tupla (user_hash, pass_hash) ou (None, None) se vazio/ausente.
     try:
         with open(LOGIN_FILE, 'r') as f:
             linha = f.readline().strip()
@@ -347,9 +354,9 @@ def estatisticas(inventario):
     print(f'Valor total do estoque: R$ {valor_total:.2f}')
     print(f'Quantidade de produtos importados: {total_importados}')
 
-# Login / Autenticação
-def criar_login_inicial():
-    print('Arquivo de login vazio. Crie usuário e senha iniciais.')
+# Login / Autenticação -> haverá apenas um login neste arquivo 
+def criar_login(): 
+    print('Arquivo de login vazio. Crie usuário e senha iniciais.')  # a primeira vez que o programa for executado esse arquivo estará vazio e será solicitado um usuário e senha iniciais
     user = input('Novo usuário: ').strip()
     senha = input('Nova senha: ').strip()
     user_hash = sha256_hex(user)
@@ -360,7 +367,7 @@ def criar_login_inicial():
 def autenticar():
     user_hash_stored, pass_hash_stored = ler_login()
     if user_hash_stored is None:
-        criar_login_inicial()
+        criar_login()
         user_hash_stored, pass_hash_stored = ler_login()
     # tentar autenticar
     while True:
@@ -422,6 +429,7 @@ def main():
     menu_principal()
 
 main()
+
 
 
 
